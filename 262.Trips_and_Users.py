@@ -98,41 +98,6 @@ users_df.show()
 
 from pyspark.sql.functions import col, when, sum as _sum, count, round
 
-result_df = (
-    trips_df.alias("t")
-    # Join client (unbanned)
-    .join(
-        users_df.alias("c"),
-        (col("t.client_id") == col("c.users_id")) &
-        (col("c.banned") == "No"),
-        "inner"
-    )
-    # Join driver (unbanned)
-    .join(
-        users_df.alias("d"),
-        (col("t.driver_id") == col("d.users_id")) &
-        (col("d.banned") == "No"),
-        "inner"
-    )
-    # Date filter
-    .filter(
-        col("t.request_at").between("2013-10-01", "2013-10-03")
-    )
-    # Aggregation
-    .groupBy(col("t.request_at").alias("Day"))
-    .agg(
-        round(
-            _sum(
-                when(col("t.status").like("cancelled%"), 1).otherwise(0)
-            ) / count("*"),
-            2
-        ).alias("Cancellation Rate")
-    )
-    .orderBy("Day")
-)
-
-result_df.show()
-
 
 
 print("USING SQL")
