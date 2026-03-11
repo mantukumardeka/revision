@@ -31,6 +31,7 @@ print("Using PySPARK-Get 2nd Highest Salary")
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
+### We will use partition by if we need to do it for per dept 2nd highest sal
 salary_df=employee_df.withColumn("rn", dense_rank().over(Window.orderBy(employee_df.salary.desc()))).filter(col("rn")==2)
 
 

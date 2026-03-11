@@ -42,3 +42,5 @@ join_df=emp_df.alias("e").join(emp_df.alias("m"),col("m.id")==col("e.managerId")
     .select(col("e.name").alias("Employee"))
 
 join_df.show()
+
+
