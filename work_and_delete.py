@@ -1,16 +1,63 @@
+from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
 
-spark = SparkSession.builder.appName("DataCleaningPractice").getOrCreate()
+conf = SparkConf().setMaster("local[*]").setAppName("MaskingExample")
+sc = SparkContext(conf=conf)
+sc.setLogLevel("ERROR")
+spark = SparkSession.builder.getOrCreate()
 
-data = [
-    (1, " Alice ", "goa", None, 25, "5000", "2025-01-01", ["Python", "SQL"]),
-    (2, "", " mumbai ", 2000, -5, "abc", "2025/02/01", ["Java", "Python"]),
-    (3, None, None, None, 30, "70000", "2025-03-01", None),
-    (4, "Bob@", "delhi", 150000, 40, "90000", "2025-04-01", ["Scala"]),
-    (4, "Bob@", "delhi", 150000, 40, "90000", "2025-04-01", ["Scala"]),  # duplicate
-]
+# ------------------------
+# EMAIL MASKING UDF
+# m******t@gmail.com
+# ------------------------
+def mask_email(email):
+    try:
+        at_index = email.index("@")
+        first = email[0]              # first letter
+        last = email[at_index - 1]    # letter before @
+        stars = "*" * (at_index - 2)  # stars in between
+        return first + stars + last + email[at_index:]
+    except:
+        return email
 
-columns = ["id", "name", "city", "salary", "age", "salary_str", "date", "skills"]
+mask_email_udf = udf(mask_email, StringType())
 
-df = spark.createDataFrame(data, columns)
+# ------------------------
+# MOBILE MASKING UDF
+# 9*****434
+# ------------------------
+def mask_mobile(mobile):
+    try:
+        first = mobile[0]                 # first digit
+        last = mobile[-1]                 # last digit
+        stars = "*" * (len(mobile) - 2)   # stars in between
+        return first + stars + last
+    except:
+        return mobile
+
+mask_mobile_udf = udf(mask_mobile, StringType())
+
+# ------------------------
+# CREATE DATAFRAME
+# ------------------------
+df = spark.createDataFrame([
+    ("Renuka1992@gmail.com", "9856765434"),
+    ("anbu.arasu@gmail.com", "9844567788"),
+    ("mantuct@gmail.com", "9876543210")
+], ["email", "mobile"])
+
 df.show(truncate=False)
+
+# ------------------------
+# APPLY MASKING UDFs
+# ------------------------
+
+maskeddf = df.withColumn("email", mask_email_udf("email")) \
+             .withColumn("mobile", mask_mobile_udf("mobile"))
+
+maskeddf.show(truncate=False)
+
+
+#

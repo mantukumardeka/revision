@@ -29,17 +29,35 @@ columns = ["id", "name", "city", "salary", "age", "salary_str", "date", "skills"
 df = spark.createDataFrame(data, columns)
 
 df.show(truncate=False)
+# Masking using UDF
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
 
-#df = df.withColumn("first_name", split(col("email"), "@|$")[0])
+def mask_mobile(mobile):
+    try:
+        mobile = mobile.strip()
+        first=mobile[:2] # [1]
+        last=mobile[-2:] # [-1]
+        stars="*" * (len(mobile)-4)
+        return first+stars+last
+    except:
+        return mobile
+df_mb=udf(mask_mobile,StringType())
 
-from pyspark.sql.functions import regexp_extract
 
-#regexp_extract(column, pattern, group_index)
-from pyspark.sql.functions import regexp_extract
+def mask_email(email):
+    try:
+        at_index = email.index("@")
+        first = email[0]              # first letter
+        last = email[at_index - 1]    # letter before @
+        stars = "*" * (at_index - 2)  # stars in between
+        return first + stars + last + email[at_index:]
+    except:
+        return email
 
-df = df.withColumn(
-    "username",
-    regexp_extract(col("email"), r'^([^@\$]+)', 1)
-)
+mask_email_udf = udf(mask_email, StringType())
 
-df.show()
+maskeddf = df.withColumn("newemail", mask_email_udf("email"))\
+             .withColumn("newmobile", df_mb("mobile"))
+
+maskeddf.show(truncate=False)
